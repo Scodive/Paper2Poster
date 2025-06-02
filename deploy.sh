@@ -63,7 +63,7 @@ else
     echo "2. 点击 'New Project'"
     echo "3. 导入你的Git仓库"
     echo "4. 配置环境变量："
-    echo "   - GEMINI_API_KEY: AIzaSyDy9pYAEW7e2Ewk__9TCHAD5X_G1VhCtVw"
+    echo "   - GEMINI_API_KEY: GEMINI_API_KEY"
     echo "   - GEMINI_MODEL: gemini-2.5-flash-preview-05-20"
     echo "   - NODE_ENV: production"
     echo "5. 点击部署"
