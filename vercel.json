@@ -6,7 +6,7 @@
   "framework": "nextjs",
   "functions": {
     "backend/src/server.ts": {
-      "maxDuration": 300
+      "maxDuration": 60
     }
   },
   "rewrites": [
