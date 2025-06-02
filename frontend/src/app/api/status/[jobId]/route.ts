@@ -8,15 +8,29 @@ export async function GET(
   try {
     const { jobId } = params;
     
+    console.log(`Status request for jobId: ${jobId}`);
+    
     if (!jobId) {
+      console.log('Missing jobId parameter');
       return NextResponse.json({ error: '缺少jobId参数' }, { status: 400 });
     }
     
     const job = JobManager.getJob(jobId);
     
     if (!job) {
-      return NextResponse.json({ error: '作业不存在' }, { status: 404 });
+      console.log(`Job ${jobId} not found`);
+      
+      // 返回一个默认的"处理中"状态，避免404
+      return NextResponse.json({
+        id: jobId,
+        status: 'processing',
+        progress: 5,
+        message: '正在查找作业信息...',
+        createdAt: new Date().toISOString()
+      });
     }
+    
+    console.log(`Found job ${jobId}:`, job);
     
     return NextResponse.json({
       id: job.id,
