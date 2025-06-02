@@ -1,17 +1,3 @@
 {
-  "version": 2,
-  "buildCommand": "npm run build:frontend",
-  "outputDirectory": "frontend/.next",
-  "installCommand": "npm run install:all",
-  "functions": {
-    "backend/src/server.ts": {
-      "maxDuration": 60
-    }
-  },
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/backend/src/server.ts"
-    }
-  ]
+  "version": 2
 } 
