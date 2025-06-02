@@ -1,7 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import { existsSync } from 'fs';
-import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { JobManager } from '@/lib/jobManager';
 
@@ -26,27 +23,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '文件大小超过限制（50MB）' }, { status: 400 });
     }
     
-    // 创建上传目录
-    const uploadDir = path.join(process.cwd(), 'uploads');
-    if (!existsSync(uploadDir)) {
-      await mkdir(uploadDir, { recursive: true });
-    }
-    
-    // 生成唯一文件名
+    // 生成唯一作业ID
     const jobId = uuidv4();
-    const fileName = `${jobId}-${file.name}`;
-    const filePath = path.join(uploadDir, fileName);
     
-    // 保存文件
+    // 读取文件内容到内存
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    await writeFile(filePath, buffer);
     
-    // 创建作业记录
-    const job = JobManager.createJob(jobId, file.name, filePath);
+    // 创建作业记录（不保存文件路径，直接使用内存数据）
+    const job = JobManager.createJob(jobId, file.name, ''); // 空文件路径
     
     // 异步处理文件
-    processFile(jobId, filePath).catch((error: any) => {
+    processFile(jobId, buffer).catch((error: any) => {
       console.error('处理文件时出错:', error);
       JobManager.updateJob(jobId, {
         status: 'error',
@@ -68,7 +56,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function processFile(jobId: string, filePath: string) {
+async function processFile(jobId: string, fileBuffer: Buffer) {
   try {
     // 更新进度 - 开始处理
     JobManager.updateJob(jobId, {
@@ -76,7 +64,7 @@ async function processFile(jobId: string, filePath: string) {
       message: '解析PDF文件...'
     });
     
-    // 模拟PDF文本提取（在实际应用中使用pdf-parse）
+    // 模拟PDF文本提取（在实际应用中使用pdf-parse处理fileBuffer）
     const extractedText = `这是一篇关于人工智能的学术论文示例。
 
 标题：深度学习在自然语言处理中的应用研究
@@ -113,22 +101,13 @@ async function processFile(jobId: string, filePath: string) {
       message: '生成海报文件...'
     });
     
-    // 保存生成的海报内容
-    const outputDir = path.join(process.cwd(), 'outputs');
-    if (!existsSync(outputDir)) {
-      await mkdir(outputDir, { recursive: true });
-    }
-    
-    const outputPath = path.join(outputDir, `poster-${jobId}.txt`);
-    await writeFile(outputPath, posterContent);
-    
-    // 完成处理
+    // 完成处理 - 将生成的内容存储在作业记录中
     JobManager.updateJob(jobId, {
       status: 'completed',
       progress: 100,
       message: '处理完成！',
       downloadUrl: `/api/download/${jobId}`,
-      outputPath
+      outputPath: posterContent // 直接存储内容而不是文件路径
     });
     
   } catch (error: any) {

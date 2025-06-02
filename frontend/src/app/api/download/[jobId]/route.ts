@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readFile } from 'fs/promises';
-import path from 'path';
 import { JobManager } from '@/lib/jobManager';
 
 export async function GET(
@@ -24,21 +22,8 @@ export async function GET(
       return NextResponse.json({ error: '文件尚未处理完成' }, { status: 400 });
     }
     
-    try {
-      // 尝试读取生成的文件
-      const outputPath = job.outputPath || path.join(process.cwd(), 'outputs', `poster-${jobId}.txt`);
-      const fileContent = await readFile(outputPath, 'utf-8');
-      
-      return new NextResponse(fileContent, {
-        status: 200,
-        headers: {
-          'Content-Type': 'text/plain; charset=utf-8',
-          'Content-Disposition': `attachment; filename="poster-${job.fileName.replace('.pdf', '')}-${jobId}.txt"`,
-        },
-      });
-    } catch (fileError) {
-      // 如果文件不存在，返回备用内容
-      const fallbackContent = `
+    // 从作业记录中获取生成的内容
+    const posterContent = job.outputPath || `
 海报生成完成！
 
 原文件: ${job.fileName}
@@ -78,17 +63,15 @@ export async function GET(
 • 多语言支持
 • 个性化模板定制
 
-注：这是演示版本，实际系统将提供更丰富的功能。
-      `.trim();
-      
-      return new NextResponse(fallbackContent, {
-        status: 200,
-        headers: {
-          'Content-Type': 'text/plain; charset=utf-8',
-          'Content-Disposition': `attachment; filename="poster-${job.fileName.replace('.pdf', '')}-${jobId}.txt"`,
-        },
-      });
-    }
+注：这是演示版本，实际系统将提供更丰富的功能。`.trim();
+    
+    return new NextResponse(posterContent, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Content-Disposition': `attachment; filename="poster-${job.fileName.replace('.pdf', '')}-${jobId}.txt"`,
+      },
+    });
     
   } catch (error) {
     console.error('下载错误:', error);
