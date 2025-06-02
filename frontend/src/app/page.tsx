@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Upload, Download, Sparkles, FileText, Palette, Zap } from 'lucide-react';
 import FileUpload from '../components/FileUpload';
 import ProcessingStatus from '../components/ProcessingStatus';
-import ResultDisplay from '../components/ResultDisplay';
+import SimpleResultDisplay from '../components/SimpleResultDisplay';
 
 interface ProcessingState {
   status: 'idle' | 'uploading' | 'processing' | 'completed' | 'error';
@@ -19,7 +19,6 @@ export default function Home() {
     progress: 0,
     message: '',
   });
-  const [resultData, setResultData] = useState<any>(null);
 
   const handleFileUpload = async (file: File) => {
     setProcessingState({
@@ -78,16 +77,15 @@ export default function Home() {
           setProcessingState({
             status: 'completed',
             progress: 100,
-            message: '海报生成完成！',
+            message: data.message || '海报生成完成！',
             jobId,
           });
-          setResultData(data.result);
         } else if (data.status === 'error') {
           clearInterval(interval);
           setProcessingState({
             status: 'error',
             progress: 0,
-            message: data.error || '处理失败',
+            message: data.message || '处理失败',
           });
         }
       } catch (error) {
@@ -107,7 +105,6 @@ export default function Home() {
       progress: 0,
       message: '',
     });
-    setResultData(null);
   };
 
   return (
@@ -183,11 +180,11 @@ export default function Home() {
           />
         )}
 
-        {processingState.status === 'completed' && resultData && (
-          <ResultDisplay 
-            result={resultData}
+        {processingState.status === 'completed' && (
+          <SimpleResultDisplay 
             onReset={resetState}
             jobId={processingState.jobId}
+            message={processingState.message}
           />
         )}
 
