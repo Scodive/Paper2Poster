@@ -15,7 +15,9 @@
     "build:frontend": "cd frontend && npm run build",
     "build:backend": "cd backend && npm run build",
     "start": "cd frontend && npm start",
-    "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install"
+    "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install",
+    "audit:fix": "npm audit fix && cd frontend && npm audit fix && cd ../backend && npm audit fix",
+    "security:check": "npm audit && cd frontend && npm audit && cd ../backend && npm audit"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
