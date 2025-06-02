@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readFile } from 'fs/promises';
 import path from 'path';
-import { jobs } from '../../upload/route';
+import { JobManager } from '@/lib/jobManager';
 
 export async function GET(
   request: NextRequest,
@@ -14,7 +14,7 @@ export async function GET(
       return NextResponse.json({ error: '缺少jobId参数' }, { status: 400 });
     }
     
-    const job = jobs.get(jobId);
+    const job = JobManager.getJob(jobId);
     
     if (!job) {
       return NextResponse.json({ error: '作业不存在' }, { status: 404 });

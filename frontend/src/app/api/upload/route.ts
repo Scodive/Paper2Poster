@@ -3,9 +3,7 @@ import { writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-
-// 作业状态管理
-const jobs = new Map();
+import { JobManager } from '@/lib/jobManager';
 
 // Gemini API配置
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyDy9pYAEW7e2Ewk__9TCHAD5X_G1VhCtVw';
@@ -45,27 +43,15 @@ export async function POST(request: NextRequest) {
     await writeFile(filePath, buffer);
     
     // 创建作业记录
-    const job = {
-      id: jobId,
-      status: 'processing',
-      progress: 0,
-      fileName: file.name,
-      filePath,
-      createdAt: new Date().toISOString(),
-      message: '开始处理文件...'
-    };
-    
-    jobs.set(jobId, job);
+    const job = JobManager.createJob(jobId, file.name, filePath);
     
     // 异步处理文件
     processFile(jobId, filePath).catch((error: any) => {
       console.error('处理文件时出错:', error);
-      const job = jobs.get(jobId);
-      if (job) {
-        job.status = 'error';
-        job.message = '处理失败: ' + error.message;
-        jobs.set(jobId, job);
-      }
+      JobManager.updateJob(jobId, {
+        status: 'error',
+        message: '处理失败: ' + error.message
+      });
     });
     
     return NextResponse.json({
@@ -83,14 +69,12 @@ export async function POST(request: NextRequest) {
 }
 
 async function processFile(jobId: string, filePath: string) {
-  const job = jobs.get(jobId);
-  if (!job) return;
-  
   try {
     // 更新进度 - 开始处理
-    job.progress = 10;
-    job.message = '解析PDF文件...';
-    jobs.set(jobId, job);
+    JobManager.updateJob(jobId, {
+      progress: 10,
+      message: '解析PDF文件...'
+    });
     
     // 模拟PDF文本提取（在实际应用中使用pdf-parse）
     const extractedText = `这是一篇关于人工智能的学术论文示例。
@@ -116,16 +100,18 @@ async function processFile(jobId: string, filePath: string) {
 5. 结论
 本研究为深度学习在NLP中的应用提供了新的思路和方法...`;
     
-    job.progress = 30;
-    job.message = '使用AI分析内容...';
-    jobs.set(jobId, job);
+    JobManager.updateJob(jobId, {
+      progress: 30,
+      message: '使用AI分析内容...'
+    });
     
     // 调用Gemini API进行内容分析和海报生成
     const posterContent = await generatePosterWithGemini(extractedText);
     
-    job.progress = 80;
-    job.message = '生成海报文件...';
-    jobs.set(jobId, job);
+    JobManager.updateJob(jobId, {
+      progress: 80,
+      message: '生成海报文件...'
+    });
     
     // 保存生成的海报内容
     const outputDir = path.join(process.cwd(), 'outputs');
@@ -137,17 +123,19 @@ async function processFile(jobId: string, filePath: string) {
     await writeFile(outputPath, posterContent);
     
     // 完成处理
-    job.status = 'completed';
-    job.progress = 100;
-    job.message = '处理完成！';
-    job.downloadUrl = `/api/download/${jobId}`;
-    job.outputPath = outputPath;
-    jobs.set(jobId, job);
+    JobManager.updateJob(jobId, {
+      status: 'completed',
+      progress: 100,
+      message: '处理完成！',
+      downloadUrl: `/api/download/${jobId}`,
+      outputPath
+    });
     
   } catch (error: any) {
-    job.status = 'error';
-    job.message = '处理失败: ' + error.message;
-    jobs.set(jobId, job);
+    JobManager.updateJob(jobId, {
+      status: 'error',
+      message: '处理失败: ' + error.message
+    });
   }
 }
 
@@ -220,7 +208,4 @@ ${text.substring(0, 200)}...
 
 注：由于API限制，这是一个演示版本的海报内容。`;
   }
-}
-
-// 导出jobs供其他路由使用
-export { jobs }; 
+} 
