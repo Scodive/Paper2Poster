@@ -31,53 +31,15 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     
-    // 创建作业记录（不保存文件路径，直接使用内存数据）
+    // 创建作业记录
     const job = JobManager.createJob(jobId, file.name, ''); 
     
-    // 立即验证作业是否创建成功
-    const verifyJob = JobManager.getJob(jobId);
-    console.log(`Job verification after creation:`, verifyJob ? 'SUCCESS' : 'FAILED');
-    
-    // 异步处理文件 - 使用setTimeout确保不阻塞响应
-    setTimeout(() => {
-      processFile(jobId, buffer).catch((error: any) => {
-        console.error('处理文件时出错:', error);
-        JobManager.updateJob(jobId, {
-          status: 'error',
-          message: '处理失败: ' + error.message
-        });
-      });
-    }, 100); // 100ms延迟确保响应先返回
-    
-    return NextResponse.json({
-      jobId,
-      message: '文件上传成功，开始处理...'
-    });
-    
-  } catch (error) {
-    console.error('上传错误:', error);
-    return NextResponse.json(
-      { error: '文件上传失败' },
-      { status: 500 }
-    );
-  }
-}
-
-async function processFile(jobId: string, fileBuffer: Buffer) {
-  try {
-    console.log(`Starting to process file for job ${jobId}`);
-    
-    // 更新进度 - 开始处理
-    JobManager.updateJob(jobId, {
-      progress: 10,
-      message: '解析PDF文件...'
-    });
-    
-    // 模拟延迟
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // 模拟PDF文本提取（在实际应用中使用pdf-parse处理fileBuffer）
-    const extractedText = `这是一篇关于人工智能的学术论文示例。
+    // 在同一个请求中直接处理文件，避免状态共享问题
+    try {
+      console.log(`Starting to process file for job ${jobId}`);
+      
+      // 模拟PDF文本提取
+      const extractedText = `这是一篇关于人工智能的学术论文示例。
 
 标题：深度学习在自然语言处理中的应用研究
 
@@ -99,40 +61,36 @@ async function processFile(jobId: string, fileBuffer: Buffer) {
 
 5. 结论
 本研究为深度学习在NLP中的应用提供了新的思路和方法...`;
+      
+      // 调用Gemini API进行内容分析和海报生成
+      const posterContent = await generatePosterWithGemini(extractedText);
+      
+      // 直接返回处理结果
+      console.log(`Job ${jobId} completed successfully`);
+      
+      return NextResponse.json({
+        jobId,
+        status: 'completed',
+        message: '海报生成完成！',
+        posterContent, // 直接返回生成的内容
+        createdAt: new Date().toISOString()
+      });
+      
+    } catch (error: any) {
+      console.error(`Job ${jobId} failed:`, error);
+      return NextResponse.json({
+        jobId,
+        status: 'error',
+        message: '处理失败: ' + error.message
+      }, { status: 500 });
+    }
     
-    JobManager.updateJob(jobId, {
-      progress: 30,
-      message: '使用AI分析内容...'
-    });
-    
-    // 调用Gemini API进行内容分析和海报生成
-    const posterContent = await generatePosterWithGemini(extractedText);
-    
-    JobManager.updateJob(jobId, {
-      progress: 80,
-      message: '生成海报文件...'
-    });
-    
-    // 短暂延迟模拟文件生成
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // 完成处理 - 将生成的内容存储在作业记录中
-    JobManager.updateJob(jobId, {
-      status: 'completed',
-      progress: 100,
-      message: '处理完成！',
-      downloadUrl: `/api/download/${jobId}`,
-      outputPath: posterContent // 直接存储内容而不是文件路径
-    });
-    
-    console.log(`Job ${jobId} completed successfully`);
-    
-  } catch (error: any) {
-    console.error(`Job ${jobId} failed:`, error);
-    JobManager.updateJob(jobId, {
-      status: 'error',
-      message: '处理失败: ' + error.message
-    });
+  } catch (error) {
+    console.error('上传错误:', error);
+    return NextResponse.json(
+      { error: '文件上传失败' },
+      { status: 500 }
+    );
   }
 }
 

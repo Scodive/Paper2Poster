@@ -11,6 +11,7 @@ interface ProcessingState {
   progress: number;
   message: string;
   jobId?: string;
+  posterContent?: string;
 }
 
 export default function Home() {
@@ -31,6 +32,13 @@ export default function Home() {
     formData.append('file', file);
 
     try {
+      setProcessingState(prev => ({
+        ...prev,
+        status: 'processing',
+        progress: 50,
+        message: '正在处理论文...',
+      }));
+
       const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
@@ -42,15 +50,21 @@ export default function Home() {
 
       const data = await response.json();
       
-      setProcessingState({
-        status: 'processing',
-        progress: 30,
-        message: '正在处理论文...',
-        jobId: data.jobId,
-      });
-
-      // 轮询处理状态
-      pollProcessingStatus(data.jobId);
+      if (data.status === 'completed') {
+        setProcessingState({
+          status: 'completed',
+          progress: 100,
+          message: data.message || '海报生成完成！',
+          jobId: data.jobId,
+          posterContent: data.posterContent,
+        });
+      } else if (data.status === 'error') {
+        setProcessingState({
+          status: 'error',
+          progress: 0,
+          message: data.message || '处理失败',
+        });
+      }
     } catch (error) {
       setProcessingState({
         status: 'error',
@@ -58,45 +72,6 @@ export default function Home() {
         message: '上传失败，请重试',
       });
     }
-  };
-
-  const pollProcessingStatus = async (jobId: string) => {
-    const interval = setInterval(async () => {
-      try {
-        const response = await fetch(`/api/status/${jobId}`);
-        const data = await response.json();
-
-        setProcessingState(prev => ({
-          ...prev,
-          progress: data.progress,
-          message: data.message,
-        }));
-
-        if (data.status === 'completed') {
-          clearInterval(interval);
-          setProcessingState({
-            status: 'completed',
-            progress: 100,
-            message: data.message || '海报生成完成！',
-            jobId,
-          });
-        } else if (data.status === 'error') {
-          clearInterval(interval);
-          setProcessingState({
-            status: 'error',
-            progress: 0,
-            message: data.message || '处理失败',
-          });
-        }
-      } catch (error) {
-        clearInterval(interval);
-        setProcessingState({
-          status: 'error',
-          progress: 0,
-          message: '状态查询失败',
-        });
-      }
-    }, 2000);
   };
 
   const resetState = () => {
@@ -185,6 +160,7 @@ export default function Home() {
             onReset={resetState}
             jobId={processingState.jobId}
             message={processingState.message}
+            posterContent={processingState.posterContent}
           />
         )}
 

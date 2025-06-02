@@ -7,18 +7,29 @@ interface SimpleResultDisplayProps {
   onReset: () => void;
   jobId?: string;
   message?: string;
+  posterContent?: string;
 }
 
-export default function SimpleResultDisplay({ onReset, jobId, message }: SimpleResultDisplayProps) {
+export default function SimpleResultDisplay({ onReset, jobId, message, posterContent }: SimpleResultDisplayProps) {
   const [isDownloading, setIsDownloading] = useState(false);
 
   const handleDownload = async () => {
-    if (!jobId) return;
+    if (!posterContent) {
+      alert('没有内容可下载');
+      return;
+    }
     
     setIsDownloading(true);
     try {
-      const response = await fetch(`/api/download/${jobId}`, {
-        method: 'GET',
+      const response = await fetch('/api/download', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: posterContent,
+          fileName: `科研海报-${jobId || Date.now()}`
+        }),
       });
       
       if (!response.ok) {
@@ -30,7 +41,7 @@ export default function SimpleResultDisplay({ onReset, jobId, message }: SimpleR
       const a = document.createElement('a');
       a.style.display = 'none';
       a.href = url;
-      a.download = `科研海报-${jobId}.txt`;
+      a.download = `科研海报-${jobId || Date.now()}.txt`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -56,35 +67,63 @@ export default function SimpleResultDisplay({ onReset, jobId, message }: SimpleR
         </p>
       </div>
 
-      {/* Poster Info */}
-      <div className="bg-gradient-to-br from-slate-900/80 to-blue-900/80 backdrop-blur-sm border border-blue-500/20 rounded-xl p-6 mb-8">
-        <div className="flex items-center justify-center mb-4">
-          <FileText className="h-16 w-16 text-blue-400" />
-        </div>
-        
-        <div className="text-center">
-          <h3 className="text-xl font-semibold text-white mb-2">学术海报文本内容</h3>
-          <p className="text-gray-300 mb-4">
-            AI已经分析了您的论文内容，生成了结构化的海报文本。
-          </p>
+      {/* Poster Content Preview */}
+      {posterContent && (
+        <div className="bg-gradient-to-br from-slate-900/80 to-blue-900/80 backdrop-blur-sm border border-blue-500/20 rounded-xl p-6 mb-8">
+          <div className="flex items-center justify-center mb-4">
+            <FileText className="h-16 w-16 text-blue-400" />
+          </div>
           
-          <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
-            <h4 className="font-semibold text-blue-300 mb-2">📄 包含内容</h4>
-            <ul className="text-sm text-gray-400 space-y-1">
-              <li>• 论文标题和作者信息</li>
-              <li>• 研究背景和主要贡献</li>
-              <li>• 实验结果和关键发现</li>
-              <li>• 结论和未来工作展望</li>
-            </ul>
+          <div className="text-center mb-4">
+            <h3 className="text-xl font-semibold text-white mb-2">生成的海报内容预览</h3>
+          </div>
+          
+          <div className="bg-gray-900/50 border border-gray-600 rounded-lg p-4 max-h-96 overflow-y-auto">
+            <pre className="text-sm text-gray-300 whitespace-pre-wrap font-mono">
+              {posterContent.substring(0, 1000)}{posterContent.length > 1000 ? '...\n\n[内容较长，请下载查看完整版本]' : ''}
+            </pre>
+          </div>
+          
+          <div className="mt-4 bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
+            <h4 className="font-semibold text-blue-300 mb-2">📄 内容说明</h4>
+            <p className="text-sm text-gray-400">
+              AI已经根据您的论文生成了结构化的海报内容，包含标题、摘要、方法、结果和结论等关键部分。您可以下载完整内容并在PowerPoint或其他设计软件中进一步编辑。
+            </p>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Poster Info for fallback */}
+      {!posterContent && (
+        <div className="bg-gradient-to-br from-slate-900/80 to-blue-900/80 backdrop-blur-sm border border-blue-500/20 rounded-xl p-6 mb-8">
+          <div className="flex items-center justify-center mb-4">
+            <FileText className="h-16 w-16 text-blue-400" />
+          </div>
+          
+          <div className="text-center">
+            <h3 className="text-xl font-semibold text-white mb-2">学术海报文本内容</h3>
+            <p className="text-gray-300 mb-4">
+              AI已经分析了您的论文内容，生成了结构化的海报文本。
+            </p>
+            
+            <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
+              <h4 className="font-semibold text-blue-300 mb-2">📄 包含内容</h4>
+              <ul className="text-sm text-gray-400 space-y-1">
+                <li>• 论文标题和作者信息</li>
+                <li>• 研究背景和主要贡献</li>
+                <li>• 实验结果和关键发现</li>
+                <li>• 结论和未来工作展望</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Action Buttons */}
       <div className="flex flex-col sm:flex-row gap-4 mb-8">
         <button
           onClick={handleDownload}
-          disabled={isDownloading}
+          disabled={isDownloading || !posterContent}
           className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:from-gray-600 disabled:to-gray-700 text-white px-6 py-4 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center space-x-3 group"
         >
           {isDownloading ? (
